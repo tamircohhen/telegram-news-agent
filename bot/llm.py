@@ -28,7 +28,21 @@ def _json(text):
     if m:
         text = m.group(1)
     start = min([i for i in (text.find("{"), text.find("[")) if i >= 0], default=0)
-    return json.loads(text[start:])
+    try:
+        return json.loads(text[start:])
+    except json.JSONDecodeError:
+        if not text[start:].startswith("["):
+            raise
+        # פלט שנחתך – מצילים את האובייקטים השלמים
+        objs = []
+        for m in re.finditer(r"\{[^{}]*\}", text[start:]):
+            try:
+                objs.append(json.loads(m.group(0)))
+            except json.JSONDecodeError:
+                pass
+        if not objs:
+            raise
+        return objs
 
 
 # ------------------------------------------------------------------ סינון
@@ -46,14 +60,15 @@ For each candidate item return a JSON object:
    classified/leaked intelligence, unverified reports of an Israeli strike before official confirmation. Otherwise false.
 - "duplicate": true if it reports the same development as one of the RECENTLY POSTED headlines with no meaningful new detail
 - "cluster": a short English key; items about the same event share the same key
-Return ONLY a JSON array."""
+Include ONLY relevant items (omit irrelevant ones entirely). Keep every value short.
+Return ONLY a compact JSON array, no prose."""
 
 
 def triage(cfg, items, recent_headlines):
     lines = [f'{i["id"]} | {i["source"]} | {i["title"]} | {i["summary"][:250]}' for i in items]
     user = ("RECENTLY POSTED (last hours):\n" + ("\n".join("- " + h for h in recent_headlines) or "- none")
             + "\n\nCANDIDATES (id | source | title | summary):\n" + "\n".join(lines))
-    out = _json(_ask(cfg["triage_model"], TRIAGE_SYSTEM, user, max_tokens=4000))
+    out = _json(_ask(cfg["triage_model"], TRIAGE_SYSTEM, user, max_tokens=8000))
     return {r["id"]: r for r in out if isinstance(r, dict) and "id" in r}
 
 
