@@ -65,7 +65,7 @@ def pick_clusters(cfg, items, verdicts):
     clusters = {}
     for it in items:
         v = verdicts.get(it["id"])
-        if not v or not v.get("relevant") or v.get("duplicate"):
+        if not v or not v.get("relevant", True) or v.get("duplicate"):
             continue
         if int(v.get("importance", 0)) < cfg["min_importance"]:
             continue
