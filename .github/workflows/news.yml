@@ -1,0 +1,39 @@
+name: news-agent
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"      # מצב ניסיון: כל 10 דקות. למהירות מרבית שנה ל-"*/5 * * * *"
+  workflow_dispatch:             # הפעלה ידנית מלשונית Actions
+
+permissions:
+  contents: write                # כדי לשמור את קובץ המצב state/state.json
+
+concurrency:
+  group: news-state              # אותה קבוצה כמו הסיכום – לעולם לא רצות שתי הרצות במקביל
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run agent
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHANNEL_ID: ${{ secrets.TELEGRAM_CHANNEL_ID }}
+          ADMIN_CHAT_ID: ${{ secrets.ADMIN_CHAT_ID }}
+        run: python -m bot.main
+      - name: Save state
+        if: always()
+        run: |
+          git config user.name "news-agent"
+          git config user.email "news-agent@users.noreply.github.com"
+          git add state/state.json
+          git diff --cached --quiet || (git commit -m "state update [skip ci]" && git push)
