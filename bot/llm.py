@@ -28,6 +28,7 @@ def _json(text):
     if m:
         text = m.group(1)
     start = min([i for i in (text.find("{"), text.find("[")) if i >= 0], default=0)
+    text = re.sub(r",\s*([}\]])", r"\1", text)  # פסיק מיותר לפני סוגר
     try:
         return json.loads(text[start:])
     except json.JSONDecodeError:
@@ -102,7 +103,10 @@ def write_post(cfg, cluster_items):
     for it in cluster_items:
         parts.append(f'מקור: {it["source"]}\nכותרת: {it["title"]}\nתקציר: {it["summary"]}\nקישור: {it["link"]}')
     user = "כתוב פוסט אחד על הידיעה הבאה (ייתכנו כמה מקורות לאותו אירוע):\n\n" + "\n\n---\n\n".join(parts)
-    return _json(_ask(cfg["writer_model"], WRITER_SYSTEM, user, max_tokens=1500))
+    try:
+        return _json(_ask(cfg["writer_model"], WRITER_SYSTEM, user, max_tokens=1500))
+    except json.JSONDecodeError:  # ניסיון חוזר אחד
+        return _json(_ask(cfg["writer_model"], WRITER_SYSTEM, user, max_tokens=1500))
 
 
 # ------------------------------------------------------------------ סיכום יומי
