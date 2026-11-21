@@ -42,7 +42,7 @@ def main():
             llm._ask(cfg["triage_model"], "Reply with OK", "ping", max_tokens=5)
             print(f"✅ מפתח Claude תקין ({cfg['triage_model']})")
         except Exception as e:
-            print(f"❌ Claude: {e}")
+            print(f"❌ Claude: {e!r} | cause: {e.__cause__!r}")
     else:
         print("❌ חסר ANTHROPIC_API_KEY")
 
